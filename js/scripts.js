@@ -24,30 +24,38 @@ svg.append('image')
   .attr('height', mapHeight)
   .attr('xlink:href', 'data/sf-map.svg');
 
-//var projs = calcProjections(csvData)
-var projs = [{longProj: 400, latProj: 400}, {longProj: 401, latProj: 375}];
-console.log(projs)
+ //Load data
+ d3.csv("/data/short_restaurant_scores.csv", parseInputRow).then(loadData);
 
-var geoloc = [{long: -122.433701, lat:37.767683}, {long: -122.422442, lat:37.764908}];
+ //Parse CSV rows
+ function parseInputRow (d) {
+   return {
+     business_id : d.business_id,
+     business_name : d.business_name,
+     business_longitude : +d.business_longitude,
+     business_latitude : +d.business_latitude,
+     inspection_score : +d.inspection_score
+   };
+ }
 
-var circle_position_data =	d3.range(10).map(function()	{
-return {
-x:	Math.round(Math.random()	*	(1000	- 55	*	2)	+	55),	//	Random	x-pixel	on	the page
-y:	Math.round(Math.random()	*	(1000	- 55	*	2)	+	55)	//	Random	y-pixel	on	the page
-};
-});
-console.log(circle_position_data)
+ //Callback for d3.csv (all data related tasks go here)
+ function loadData(csvData){
+     console.log("data loaded")
+     generateVis(csvData);
+ };
 
-svg.selectAll("circle")
-   .data(geoloc)
-   .enter()
-   .append("circle")
-   .attr("r", 5)
-   .attr("cx", function (d) {return projection([d.long, d.lat])[0];})
-   .attr("cy", function (d) {return projection([d.long, d.lat])[1];})
-   .style("fill", "blue");
+ //Generate visualization using parsed data from CSV (array of objects)
+ function generateVis(csvData){
 
-//var circle = svg.append('circle')
-//  .attr('cx', projs.longProj[1])
-//  .attr('cy', projs.latProj[1])
-//  .attr('r', 5);
+   //Add red circles for all restaurants based on long and lat
+   svg.selectAll("circle")
+      .data(csvData)
+      .enter()
+      .append("circle")
+      .attr("r", 5)
+      .attr("cx", function (d) {return projection([d.business_longitude, d.business_latitude])[0];})
+      .attr("cy", function (d) {return projection([d.business_longitude, d.business_latitude])[1];})
+      .style("fill", "red");
+ };
+
+ function
