@@ -24,6 +24,25 @@ svg.append('image')
   .attr('height', mapHeight)
   .attr('xlink:href', 'data/sf-map.svg');
 
+A_pos = [{x: 100, y: 100}];
+//Append rectangle to svg to be dragged
+svg.selectAll("rect")
+  .data(A_pos)
+  .enter()
+  .append("rect")
+  .attr("width", 10)
+  .attr("height", 10)
+  .attr("x", 100)
+  .attr("y", 100)
+  .style("fill", "blue")
+  .call(d3.drag().on("drag",	on_rect_drag));
+
+function on_rect_drag(d)	{
+  d3.select(this)
+    .attr("x",	d.x =	d3.event.x)
+    .attr("y",	d.y =	d3.event.y);
+}
+
  //Load data
  d3.csv("/data/short_restaurant_scores.csv", parseInputRow).then(loadData);
 
@@ -57,5 +76,3 @@ svg.append('image')
       .attr("cy", function (d) {return projection([d.business_longitude, d.business_latitude])[1];})
       .style("fill", "red");
  };
-
- function
