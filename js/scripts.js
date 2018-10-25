@@ -78,14 +78,26 @@ svg.append('image')
        function updateRestaurants(closePoints) {
          //Add red circles for all restaurants based on long and lat
          console.log(closePoints)
-         svg.selectAll("circle")
-            .data(closePoints)
-            .enter()
-            .append("circle")
-            .attr("r", 3)
-            .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
-            .attr("cy", function (d) {return d.proj[1];}) //projection([d.business_longitude, d.business_latitude])[1];})
-            .style("fill", "red");
+         var circles = svg.selectAll("circle")
+                          .data(closePoints)
+
+         circles.attr("class", "update");
+
+         circles.enter().append("circle")
+             .attr("class", "enter")
+             .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
+             .attr("cy", function (d) {return d.proj[1];})
+
+        circles.exit().remove();
+
+         // svg.selectAll("circle")
+         //    .data(closePoints)
+         //    .enter()
+         //    .append("circle")
+         //    .attr("r", 3)
+         //    .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
+         //    .attr("cy", function (d) {return d.proj[1];}) //projection([d.business_longitude, d.business_latitude])[1];})
+         //    .style("fill", "red");
        }
 
 
