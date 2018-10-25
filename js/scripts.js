@@ -24,25 +24,6 @@ svg.append('image')
   .attr('height', mapHeight)
   .attr('xlink:href', 'data/sf-map.svg');
 
-A_pos = [{x: 100, y: 100}];
-//Append rectangle to svg to be dragged
-svg.selectAll("rect")
-  .data(A_pos)
-  .enter()
-  .append("rect")
-  .attr("width", 10)
-  .attr("height", 10)
-  .attr("x", 100)
-  .attr("y", 100)
-  .style("fill", "blue")
-  .call(d3.drag().on("drag",	on_rect_drag));
-
-function on_rect_drag(d)	{
-  d3.select(this)
-    .attr("x",	d.x =	d3.event.x)
-    .attr("y",	d.y =	d3.event.y);
-}
-
  //Load data
  d3.csv("/data/short_restaurant_scores.csv", parseInputRow).then(loadData);
 
@@ -65,30 +46,56 @@ function on_rect_drag(d)	{
 
  //Generate visualization using parsed data from CSV (array of objects)
  function generateVis(csvData){
+   var closePoints = [];
+
    csvData.forEach(function(d) { d.proj = projection([d.business_longitude, d.business_latitude]); });
    console.log(csvData[0])
 
-   //Add red circles for all restaurants based on long and lat
-   svg.selectAll("circle")
-      .data(csvData)
-      .enter()
-      .append("circle")
-      .attr("r", 5)
-      .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
-      .attr("cy", function (d) {return d.proj[1];}) //projection([d.business_longitude, d.business_latitude])[1];})
-      .style("fill", "green");
+       A_pos = [{x: 100, y: 100}];
+       //Append rectangle to svg to be dragged
+       svg.selectAll("rect")
+         .data(A_pos)
+         .enter()
+         .append("rect")
+         .attr("width", 10)
+         .attr("height", 10)
+         .attr("x", 100)
+         .attr("y", 100)
+         .style("fill", "blue")
+         .call(d3.drag().on("drag",	on_rect_drag));
 
-       var closePoints = csvData.filter(function (d) {
-              return Math.abs((projection([d.business_longitude, d.business_latitude])[0]
-                     - A_pos.x)) < 200
-       })
+       function on_rect_drag(d)	{
+         d3.select(this)
+           .attr("x",	d.x =	d3.event.x)
+           .attr("y",	d.y =	d3.event.y);
+           var closePoints = csvData.filter(function (d) {
+                  //console.log([d.proj[0], A_pos[0].x]);
+                  return Math.abs(d.proj[0] - A_pos[0].x) < 100;//(Math.abs(d.proj[0]- A_pos.x) < 200);
+           });
+           updateRestaurants(closePoints)
+       }
 
-    svg.selectAll("circle")
-       .data(closePoints)
-       .enter()
-       .append("circle")
-       .attr("r", 5)
-       .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
-       .attr("cy", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[1];})
-       .style("fill", "green");
+       function updateRestaurants(closePoints) {
+         //Add red circles for all restaurants based on long and lat
+         console.log(closePoints)
+         svg.selectAll("circle")
+            .data(closePoints)
+            .enter()
+            .append("circle")
+            .attr("r", 3)
+            .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
+            .attr("cy", function (d) {return d.proj[1];}) //projection([d.business_longitude, d.business_latitude])[1];})
+            .style("fill", "red");
+       }
+
+
+
+    // svg.selectAll("circle")
+    //    .data(csvData)
+    //    .enter()
+    //    .append("circle")
+    //    .attr("r", 5)
+    //    .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
+    //    .attr("cy", function (d) {return d.proj[1];}) //projection([d.business_longitude, d.business_latitude])[1];})
+    //    .style("fill", "red");
  };
