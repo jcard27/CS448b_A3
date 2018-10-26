@@ -30,12 +30,14 @@ var backgroundGroup = svg.append('g')
 var plotGroup = svg.append('g')
 
 //Add group for cursors
-var A_pos = [{x: 100, y: 100}];
-A_pos.forEach(function(d,	i)	{
-                d.i =	i;
-});
+var posA = [{x: 100, y: 100}]; // Initial position for A
+var posB = [{x: 100, y: 500}]; // Initial position for A
 var cursorGroupA =	svg.selectAll("circle")
-                      .data(A_pos)
+                      .data(posA)
+                      .enter()
+                      .append("g");
+var cursorGroupB =	svg.selectAll("circle")
+                      .data(posB)
                       .enter()
                       .append("g");
 
@@ -65,7 +67,7 @@ function parseInputRow (d) {
 
  //Generate visualization using parsed data from CSV (array of objects)
 function generateVis(csvData){
-    var rMiles = 4;
+    var rMiles = 1;
     //Calculate change in degrees per 1 pixel change in longitude
     var degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
     var rPx = calcPxRadius(rMiles, degreesPerPixel);
@@ -78,44 +80,76 @@ function generateVis(csvData){
                 .attr("r",	rPx)
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
-                .call(d3.drag().on("drag",	on_rect_drag));
+                .call(d3.drag().on("drag",	update_A));
     cursorGroupA.append("circle")
                 .style("fill",	"blue")
                 .attr("id",	function(d)	{	return "circle_border"	+	d.i;	})
                 .attr("r",	5)
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
-                .call(d3.drag().on("drag",	on_rect_drag));
+                .call(d3.drag().on("drag",	update_A));
 
-                var greyRestaurants = backgroundGroup.selectAll("circle")
-                                .data(csvData)
-                greyRestaurants.enter().append("circle")
-                   .attr("r", 5)
-                   .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
-                   .attr("cy", function (d) {return d.proj[1];})
-                   .style("fill", "green");
+  cursorGroupB.append("circle")
+              .style("fill",	"yellow")
+              .style("fill-opacity", 0.3)
+              .style("stroke", 1)
+              .attr("r",	rPx)
+              .attr("cx",	function(d)	{	return d.x;	})
+              .attr("cy",	function(d)	{	return d.y;	})
+              .call(d3.drag().on("drag", update_B));
+  cursorGroupB.append("circle")
+              .style("fill",	"blue")
+              .attr("id",	function(d)	{	return "circle_border"	+	d.i;	})
+              .attr("r",	5)
+              .attr("cx",	function(d)	{	return d.x;	})
+              .attr("cy",	function(d)	{	return d.y;	})
+              .call(d3.drag().on("drag", update_B));
 
-    // Specify initial position of point A
-    var A_pos_ll = projection.invert([A_pos[0].x, A_pos[0].y]);
+    var greyRestaurants = backgroundGroup.selectAll("circle")
+                                         .data(csvData)
+                                         .enter().append("circle")
+                                         .attr("r", 5)
+                                         .attr("cx", function (d) {return d.proj[0];})
+                                         .attr("cy", function (d) {return d.proj[1];})
+                                         .style("fill", "green");
 
-    //Update viz when points are dragged
-    function on_rect_drag(d)	{
-      A_pos = [{x: d3.event.x, y: d3.event.y}];
-      var cursors = cursorGroupA.selectAll("circle")
-         .attr("cx", d.x =	d3.event.x) //projection([d.business_longitude, d.business_latitude])[0];})
-         .attr("cy", d.y =	d3.event.y);
-
-        //Filter CSV data for points within a given distance
-        var closePoints = csvData.filter(function (d) {
-            var dist = Math.abs(Math.sqrt(
-                            Math.pow((d.proj[0] - A_pos[0].x), 2)
-                            +
-                            Math.pow((d.proj[1] - A_pos[0].y),2)
-                        ));
-            return dist < rPx;
-        });
+    //Update viz when B is dragged
+    function update_A(d) {
+        posA = [{x: d3.event.x, y: d3.event.y}];
+        var cursors = cursorGroupA.selectAll("circle")
+           .attr("cx", d.x =	d3.event.x)
+           .attr("cy", d.y =	d3.event.y);
+        closePoints = getPoints()
         updateRestaurants(closePoints)
-    };
+    }
+
+    //Update viz when B is dragged
+    function update_B(d) {
+      posB = [{x: d3.event.x, y: d3.event.y}];
+      var cursors = cursorGroupB.selectAll("circle")
+         .attr("cx", d.x =	d3.event.x)
+         .attr("cy", d.y =	d3.event.y);
+      closePoints = getPoints()
+      updateRestaurants(closePoints)
+    }
+
+    //Filter CSV data for points within a given distance
+    function getPoints(){
+        var closePoints = csvData.filter(function (d) {
+            var distA = Math.abs(Math.sqrt(
+                            Math.pow((d.proj[0] - posA[0].x), 2)
+                            +
+                            Math.pow((d.proj[1] - posA[0].y),2)
+                        ));
+            var distB = Math.abs(Math.sqrt(
+                            Math.pow((d.proj[0] - posB[0].x), 2)
+                            +
+                            Math.pow((d.proj[1] - posB[0].y),2)
+                        ));
+            return (distA < rPx && distB < rPx);
+        });
+        return closePoints;
+    }
 
     //Add red circles for all restaurants based on long and lat
     function updateRestaurants(closePoints) {
