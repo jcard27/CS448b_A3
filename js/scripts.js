@@ -85,26 +85,32 @@ function generateVis(csvData){
 
 
 
-
-  cursorGroupA.append("circle")
+  outerCircleA = cursorGroupA.append("circle")
               .style("fill",	"red")
               .style("fill-opacity", 0.3)
               .style("stroke", 1)
               .attr("r",	rPx)
               .attr("cx",	function(d)	{	return d.x;	})
               .attr("cy",	function(d)	{	return d.y;	})
+              .call(d3.drag().on("drag", update_A));
+  cursorGroupA.append("circle")
+              .style("fill",	"blue")
+              .attr("r",	5)
+              .attr("cx",	function(d)	{	return d.x;	})
+              .attr("cy",	function(d)	{	return d.y;	})
               .call(d3.drag().on("drag",	update_A));
 
-              cursorGroupA.append("text")
-                          .attr("x",	function(d)	{	return d.x;	})
-                          .attr("y",	function(d)	{	return d.y;	})
-                          .attr("text", "A")
-                          .attr("font-family", "sans-serif")
-                          .attr("font-size", "20px")
-                          .attr("fill", "black")
-                          .call(d3.drag().on("drag",	update_A));
+  // cursorGroupA.append("text")
+  //             .style("text-anchor", "middle")
+  //             .attr("x",	function(d)	{	return d.x;	})
+  //             .attr("y",	function(d)	{	return d.y;	})
+  //             .attr("font-family", "sans-serif")
+  //             .attr("font-size", "20px")
+  //             .attr("fill", "black")
+  //             .text("A")
+  //             .call(d3.drag().on("drag",	update_A));
 
-  cursorGroupB.append("circle")
+  outerCircleB = cursorGroupB.append("circle")
               .style("fill",	"yellow")
               .style("fill-opacity", 0.3)
               .style("stroke", 1)
@@ -135,11 +141,11 @@ function generateVis(csvData){
 
   slider.append("text")
         .attr("x",	xMin - 20)
-        .attr("y",	100)
+        .attr("y",	100 - 5)
         .attr("font-family", "sans-serif")
         .attr("font-size", "20px")
         .attr("fill", "black")
-        .attr("text", "LOL")
+        .text("0")
 
     function update_slider(d) {
       if (d3.event.x < xMin) {
@@ -157,10 +163,8 @@ function generateVis(csvData){
       }
       rMiles = ((xMin - sliderPos[0])*sliderMileRange)/(xMin - xMax)
       rPx = calcPxRadius(rMiles, degreesPerPixel);
-      cursorGroupA.selectAll("circle")
-         .attr("r", rPx)
-     cursorGroupB.selectAll("circle")
-         .attr("r", rPx)
+       outerCircleA.attr("r", rPx)
+       outerCircleB.attr("r", rPx)
       closePoints = getPoints()
       updateRestaurants(closePoints)
     }
@@ -176,9 +180,12 @@ function generateVis(csvData){
     //Update viz when B is dragged
     function update_A(d) {
         posA = [{x: d3.event.x, y: d3.event.y}];
-        var cursors = cursorGroupA.selectAll("circle")
+        cursorGroupA.selectAll("circle")
            .attr("cx", d.x =	d3.event.x)
            .attr("cy", d.y =	d3.event.y);
+        cursorGroupA.selectAll("text")
+              .attr("x", d.x =	d3.event.x)
+              .attr("y", d.y =	d3.event.y);
         closePoints = getPoints()
         updateRestaurants(closePoints)
     }
