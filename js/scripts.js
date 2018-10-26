@@ -3,15 +3,14 @@ var mapWidth = 750;
 var mapHeight = 750;
 
 // Set up projection that the map is using
-var projection = d3.geoMercator()
-  .center([-122.433701, 37.767683]) // San Francisco, roughly
-  .scale(225000)
-  .translate([mapWidth / 2, mapHeight / 2]);
-
 // This is the mapping between <longitude, latitude> position to <x, y> pixel position on the map
 // projection is a function and it has an inverse:
 // projection([lon, lat]) returns [x, y]
 // projection.invert([x, y]) returns [lon, lat]
+var projection = d3.geoMercator()
+  .center([-122.433701, 37.767683]) // San Francisco, roughly
+  .scale(225000)
+  .translate([mapWidth / 2, mapHeight / 2]);
 
 // Add an SVG element to the DOM
 var svg = d3.select('body').append('svg')
@@ -24,16 +23,17 @@ svg.append('image')
   .attr('height', mapHeight)
   .attr('xlink:href', 'data/sf-map.svg');
 
-//Add group for restauraunt dots
+//Add group for static restauraunt dots
+var backgroundGroup = svg.append('g')
+
+//Add group for dynamic restauraunt dots
 var plotGroup = svg.append('g')
 
 //Add group for cursors
-//var cursorGroup = svg.append('g')
 var A_pos = [{x: 100, y: 100}];
 A_pos.forEach(function(d,	i)	{
                 d.i =	i;
 });
-console.log(A_pos)
 var cursorGroupA =	svg.selectAll("circle")
                       .data(A_pos)
                       .enter()
@@ -87,6 +87,14 @@ function generateVis(csvData){
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag",	on_rect_drag));
 
+                var greyRestaurants = backgroundGroup.selectAll("circle")
+                                .data(csvData)
+                greyRestaurants.enter().append("circle")
+                   .attr("r", 5)
+                   .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
+                   .attr("cy", function (d) {return d.proj[1];})
+                   .style("fill", "green");
+
     // Specify initial position of point A
     var A_pos_ll = projection.invert([A_pos[0].x, A_pos[0].y]);
 
@@ -97,7 +105,6 @@ function generateVis(csvData){
          .attr("cx", d.x =	d3.event.x) //projection([d.business_longitude, d.business_latitude])[0];})
          .attr("cy", d.y =	d3.event.y);
 
-        var radiusMiles = [4];
         //Filter CSV data for points within a given distance
         var closePoints = csvData.filter(function (d) {
             var dist = Math.abs(Math.sqrt(
