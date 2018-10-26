@@ -18,15 +18,13 @@ var svg = d3.select('body').append('svg')
   .attr('width', mapWidth)
   .attr('height', mapHeight);
 
-
-
-var plotGroup = svg.append('g')
-
 // Add SVG map at correct size, assuming map is saved in a subdirectory called `data`
 svg.append('image')
   .attr('width', mapWidth)
   .attr('height', mapHeight)
   .attr('xlink:href', 'data/sf-map.svg');
+
+  var plotGroup = svg.append('g')
 
  //Load data
  d3.csv("/data/short_restaurant_scores.csv", parseInputRow).then(loadData);
