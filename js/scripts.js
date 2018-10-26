@@ -18,6 +18,10 @@ var svg = d3.select('body').append('svg')
   .attr('width', mapWidth)
   .attr('height', mapHeight);
 
+
+
+var plotGroup = svg.append('g')
+
 // Add SVG map at correct size, assuming map is saved in a subdirectory called `data`
 svg.append('image')
   .attr('width', mapWidth)
@@ -49,65 +53,106 @@ svg.append('image')
    var closePoints = [];
 
    csvData.forEach(function(d) { d.proj = projection([d.business_longitude, d.business_latitude]); });
-   console.log(csvData[0])
+   console.log(csvData)
 
-       A_pos = [{x: 100, y: 100}];
+      fakeData = [{proj: [200, 100]}, {proj: [200, 300]}, {proj: [200, 500]}];
+
+      updateRestaurants(csvData);
+
+       var A_pos = [{x: 100, y: 100}];
+       var A_pos_ll = projection.invert([A_pos[0].x, A_pos[0].y]);
+
+       //Difference in longitude radians for 1 pixel
+       radiansPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
+
        //Append rectangle to svg to be dragged
-       svg.selectAll("rect")
+       svg.selectAll("rect").raise()
          .data(A_pos)
          .enter()
          .append("rect")
          .attr("width", 10)
          .attr("height", 10)
-         .attr("x", 100)
-         .attr("y", 100)
+         .attr("x", A_pos[0].x)
+         .attr("y", A_pos[0].y)
          .style("fill", "blue")
          .call(d3.drag().on("drag",	on_rect_drag));
+
 
        function on_rect_drag(d)	{
          d3.select(this)
            .attr("x",	d.x =	d3.event.x)
            .attr("y",	d.y =	d3.event.y);
+
+           A_pos = [{x: d3.event.x, y: d3.event.y}];
+           A_pos_ll = projection.invert([A_pos[0].x, A_pos[0].y]);
+
+           //console.log(A_pos[0].x)
+
            var closePoints = csvData.filter(function (d) {
                   //console.log([d.proj[0], A_pos[0].x]);
-                  return Math.abs(d.proj[0] - A_pos[0].x) < 100;//(Math.abs(d.proj[0]- A_pos.x) < 200);
+                  //console.log(calcDist(A_pos_ll, [d.business_longitude, d.business_latitude]))
+                  //return calcDist(A_pos_ll, [d.business_longitude, d.business_latitude]) < 5
+                  var dist = Math.abs(
+                              Math.sqrt(
+                                Math.pow((d.proj[0] - A_pos[0].x), 2)
+                                +
+                                Math.pow((d.proj[1] - A_pos[0].y),2)));
+                  //console.log(dist)
+                  console.log(dist < 50)
+                  return dist < 200;//(Math.abs(d.proj[0]- A_pos.x) < 200);
            });
+           //console.log(closePoints)
            updateRestaurants(closePoints)
+
+           var radiusMiles = [4];
+           svg.append("circle")
+              .data(radiusMiles)
+              .enter()
+              .attr("r", function(d) {return calcPxRadius(d, radiansPerPixel);} )
+              .attr("cx", A_pos[0].x)
+              .attr("cy", A_pos[0].y)
+              .call(d3.drag().on("drag",	on_rect_drag));
+       }
+
+
+       function calcDist(loc1, loc2){
+       // Inputs:
+       // loc1 - [longitude, latitude] of location 1
+       // loc2 - [longitude, latitude] of location 2
+       // Output:
+       // dist - distance in miles between locations 1 and 2
+       //
+       // Note: I used example from https://bl.ocks.org/ThomasThoren/6a543c4d804f35a240f9 here
+         var radians = d3.geoDistance(loc1, loc2);
+         var earth_radius = 3959;  // miles
+         var dist = earth_radius * radians;
+         return dist;
+       }
+
+       function calcPxRadius(distMiles, radiansPerPixel){
+         var earth_radius = 3959;  // miles
+         var radians = distMiles/earth_radius;
+         var rPixels = radians/radiansPerPixel;
+         return rPixels;
        }
 
        function updateRestaurants(closePoints) {
          //Add red circles for all restaurants based on long and lat
+         //console.log(closePoints)
          console.log(closePoints)
-         var circles = svg.selectAll("circle")
+         var circles = plotGroup.selectAll("circle")
                           .data(closePoints)
 
-         circles.attr("class", "update");
+         //circles.attr("class", "update");
 
          circles.enter().append("circle")
+             .merge(circles)
              .attr("class", "enter")
              .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
              .attr("cy", function (d) {return d.proj[1];})
 
-        circles.exit().remove();
-
-         // svg.selectAll("circle")
-         //    .data(closePoints)
-         //    .enter()
-         //    .append("circle")
-         //    .attr("r", 3)
-         //    .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
-         //    .attr("cy", function (d) {return d.proj[1];}) //projection([d.business_longitude, d.business_latitude])[1];})
-         //    .style("fill", "red");
+        circles.exit()
+               .attr("class", "exit").remove();
        }
 
-
-
-    // svg.selectAll("circle")
-    //    .data(csvData)
-    //    .enter()
-    //    .append("circle")
-    //    .attr("r", 5)
-    //    .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
-    //    .attr("cy", function (d) {return d.proj[1];}) //projection([d.business_longitude, d.business_latitude])[1];})
-    //    .style("fill", "red");
  };
