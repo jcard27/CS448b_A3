@@ -23,12 +23,6 @@ svg.append('image')
   .attr('height', mapHeight)
   .attr('xlink:href', 'data/sf-map.svg');
 
-//Add group for static restauraunt dots
-var backgroundGroup = svg.append('g')
-
-//Add group for dynamic restauraunt dots
-var plotGroup = svg.append('g')
-
 //Add group for cursors
 var posA = [{x: 100, y: 100}]; // Initial position for A
 var posB = [{x: 100, y: 500}]; // Initial position for A
@@ -40,6 +34,23 @@ var cursorGroupB =	svg.selectAll("circle")
                       .data(posB)
                       .enter()
                       .append("g");
+
+//Add group for static restauraunt dots
+var backgroundGroup = svg.append('g')
+
+//Add group for dynamic restauraunt dots
+var plotGroup = svg.append('g')
+
+
+var rMiles = 1;
+xMin = 500;
+xMax = 600;
+sliderMileRange = 4;
+var sliderPos = [xMin];
+var slider =	svg.selectAll("circle")
+                  .data(sliderPos)
+                  .enter()
+                  .append("g");
 
 //Load data
 d3.csv("/data/short_restaurant_scores.csv", parseInputRow).then(loadData);
@@ -67,27 +78,31 @@ function parseInputRow (d) {
 
  //Generate visualization using parsed data from CSV (array of objects)
 function generateVis(csvData){
-    var rMiles = 1;
     //Calculate change in degrees per 1 pixel change in longitude
     var degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
     var rPx = calcPxRadius(rMiles, degreesPerPixel);
     console.log(rPx)
 
-    cursorGroupA.append("circle")
-                .style("fill",	"red")
-                .style("fill-opacity", 0.3)
-                .style("stroke", 1)
-                .attr("r",	rPx)
-                .attr("cx",	function(d)	{	return d.x;	})
-                .attr("cy",	function(d)	{	return d.y;	})
-                .call(d3.drag().on("drag",	update_A));
-    cursorGroupA.append("circle")
-                .style("fill",	"blue")
-                .attr("id",	function(d)	{	return "circle_border"	+	d.i;	})
-                .attr("r",	5)
-                .attr("cx",	function(d)	{	return d.x;	})
-                .attr("cy",	function(d)	{	return d.y;	})
-                .call(d3.drag().on("drag",	update_A));
+
+
+
+  cursorGroupA.append("circle")
+              .style("fill",	"red")
+              .style("fill-opacity", 0.3)
+              .style("stroke", 1)
+              .attr("r",	rPx)
+              .attr("cx",	function(d)	{	return d.x;	})
+              .attr("cy",	function(d)	{	return d.y;	})
+              .call(d3.drag().on("drag",	update_A));
+
+              cursorGroupA.append("text")
+                          .attr("x",	function(d)	{	return d.x;	})
+                          .attr("y",	function(d)	{	return d.y;	})
+                          .attr("text", "A")
+                          .attr("font-family", "sans-serif")
+                          .attr("font-size", "20px")
+                          .attr("fill", "black")
+                          .call(d3.drag().on("drag",	update_A));
 
   cursorGroupB.append("circle")
               .style("fill",	"yellow")
@@ -99,11 +114,56 @@ function generateVis(csvData){
               .call(d3.drag().on("drag", update_B));
   cursorGroupB.append("circle")
               .style("fill",	"blue")
-              .attr("id",	function(d)	{	return "circle_border"	+	d.i;	})
               .attr("r",	5)
               .attr("cx",	function(d)	{	return d.x;	})
               .attr("cy",	function(d)	{	return d.y;	})
               .call(d3.drag().on("drag", update_B));
+
+    slider.append("circle")
+          .attr("r", 5)
+          .attr("cx", function (d) {return d})
+          .attr("cy", 100)
+          .call(d3.drag().on("drag",	update_slider));
+
+    slider.append("line")
+          .attr("x1", xMin)
+          .attr("x2", xMax)
+          .attr("y1", 100)
+          .attr("y2", 100)
+          .attr("stroke", "black")
+          .attr("stroke-width", 1)
+
+  slider.append("text")
+        .attr("x",	xMin - 20)
+        .attr("y",	100)
+        .attr("font-family", "sans-serif")
+        .attr("font-size", "20px")
+        .attr("fill", "black")
+        .attr("text", "LOL")
+
+    function update_slider(d) {
+      if (d3.event.x < xMin) {
+        sliderPos = [xMin];
+          slider.select("circle")
+                .attr("cx", xMin)
+      } else if (xMax < d3.event.x) {
+          slider.selectAll("circle")
+                .attr("cx", xMax)
+          sliderPos = [xMax];
+      } else {
+          slider.selectAll("circle")
+                .attr("cx", d.x = d3.event.x)
+          sliderPos = [d3.event.x];
+      }
+      rMiles = ((xMin - sliderPos[0])*sliderMileRange)/(xMin - xMax)
+      rPx = calcPxRadius(rMiles, degreesPerPixel);
+      cursorGroupA.selectAll("circle")
+         .attr("r", rPx)
+     cursorGroupB.selectAll("circle")
+         .attr("r", rPx)
+      closePoints = getPoints()
+      updateRestaurants(closePoints)
+    }
 
     var greyRestaurants = backgroundGroup.selectAll("circle")
                                          .data(csvData)
