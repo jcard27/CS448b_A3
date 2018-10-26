@@ -65,12 +65,17 @@ function parseInputRow (d) {
 
  //Generate visualization using parsed data from CSV (array of objects)
 function generateVis(csvData){
-    //fakeData = [{proj: [200, 100]}, {proj: [200, 300]}, {proj: [200, 500]}];
+    var rMiles = 4;
+    //Calculate change in degrees per 1 pixel change in longitude
+    var degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
+    var rPx = calcPxRadius(rMiles, degreesPerPixel);
+    console.log(rPx)
+
     cursorGroupA.append("circle")
                 .style("fill",	"red")
                 .style("fill-opacity", 0.3)
                 .style("stroke", 1)
-                .attr("r",	200)
+                .attr("r",	rPx)
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag",	on_rect_drag));
@@ -84,9 +89,6 @@ function generateVis(csvData){
 
     // Specify initial position of point A
     var A_pos_ll = projection.invert([A_pos[0].x, A_pos[0].y]);
-
-    //Calculate change in degrees per 1 pixel change in longitude
-    degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
 
     //Update viz when points are dragged
     function on_rect_drag(d)	{
@@ -103,7 +105,7 @@ function generateVis(csvData){
                             +
                             Math.pow((d.proj[1] - A_pos[0].y),2)
                         ));
-            return dist < 200;
+            return dist < rPx;
         });
         updateRestaurants(closePoints)
     };
@@ -145,13 +147,5 @@ function calcPxRadius(rMiles, degreesPerPixel){
     var radians = rMiles/earth_radius;
     var degrees = (radians * 180)/3.14
     var rPixels = Math.abs(degrees/degreesPerPixel);
-    return rPixels;
-}
-
-//Calc radians in longitude for given number of miles
-function milesToRadians(miles){
-    var earth_radius = 3959;  // miles
-    var radians = miles/earth_radius;
-    var rPixels = radians/radiansPerPixel;
     return rPixels;
 }
