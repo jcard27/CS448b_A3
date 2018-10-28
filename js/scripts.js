@@ -30,7 +30,8 @@ svg.append('image')
 
 // Define Global Variables
 var csvData = [];
-var rPx = [];
+var rPxA = [];
+var rPxB = [];
 var degreesPerPixel = [];
 var posA = [{x: 100, y: 100}]; // Initial position for A
 var posB = [{x: 100, y: 500}]; // Initial position for B
@@ -56,13 +57,8 @@ var backgroundGroup = svg.append('g')
 //Add group for dynamic restauraunt dots
 var plotGroup = svg.append('g')
 
-
-var rMiles = 1;
-
-
-
 //Load data
-d3.csv("/data/restaurant_scores.csv", parseInputRow).then(loadData);
+d3.csv("/data/short_restaurant_scores.csv", parseInputRow).then(loadData);
 
 //Parse CSV rows and returns array of objects with the specified fields.
 function parseInputRow (d) {
@@ -92,20 +88,31 @@ function generateVis(csvData){
     //Calculate change in degrees per 1 pixel change in longitude
     degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
 
-    //Convert specified radius from miles to pixles
-    rPx = calcPxRadius(rMiles, degreesPerPixel);
+    //Specify initial radius in miles
+    var rMilesA = 1;
+    var rMilesB = 1;
 
-    drawSliders()
+    //Convert specified radius from miles to pixles
+    rPxA = calcPxRadius(rMilesA, degreesPerPixel);
+    rPxB = calcPxRadius(rMilesB, degreesPerPixel);
+
+    //Draw Sliders for radii
     var xMin = 500;
     var xMax = 600;
-    var ySliderA = 100;
     var sliderMileRange = 4;
-    sliderAPos = [-(rMiles*(xMin - xMax)/sliderMileRange - xMin)];
+
+    var ySliderA = 100;
+    sliderAPos = [-(rMilesA*(xMin - xMax)/sliderMileRange - xMin)];
     sliderA =	svg.selectAll("circle")
                       .data(sliderAPos)
                       .enter()
                       .append("g");
-    //Draw Slider for radius
+
+    sliderB =	svg.selectAll("circle")
+                      .data(sliderAPos)
+                      .enter()
+                      .append("g");
+
     sliderA.append("line")
           .attr("x1", xMin)
           .attr("x2", xMax)
@@ -134,40 +141,90 @@ function generateVis(csvData){
           .attr("font-size", "20px")
           .attr("fill", "black")
           .style("text-anchor", "middle")
-          .text(rMiles)
-    sliderA.append("circle")
+          .text(rMilesA)
+    var sliderACircle = sliderA.append("circle")
           .attr("r", 5)
           .attr("cx", function (d) {return d})
           .attr("cy", ySliderA)
           .call(d3.drag().on("drag",	update_sliderA));
 
+    var ySliderB = 500;
+    sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)];
+    sliderB.append("line")
+          .attr("x1", xMin)
+          .attr("x2", xMax)
+          .attr("y1", ySliderB)
+          .attr("y2", ySliderB)
+          .attr("stroke", "black")
+          .attr("stroke-width", 1)
+    sliderB.append("text")
+          .attr("x",	xMin - 20)
+          .attr("y",	ySliderB + 7)
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "20px")
+          .attr("fill", "black")
+          .text("0")
+    sliderB.append("text")
+          .attr("x",	xMax + 20)
+          .attr("y",	ySliderB + 7)
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "20px")
+          .attr("fill", "black")
+          .text(sliderMileRange)
+    var currentRadiusB = sliderB.append("text")
+          .attr("x",	sliderBPos[0])
+          .attr("y",	ySliderB + 25)
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "20px")
+          .attr("fill", "black")
+          .style("text-anchor", "middle")
+          .text(rMilesB)
+    var sliderBCircle = sliderB.append("circle")
+          .attr("r", 5)
+          .attr("cx", function (d) {return d})
+          .attr("cy", ySliderB)
+          .call(d3.drag().on("drag",	update_sliderB));
+
     //Update viz when slider is dragged
     function update_sliderA(d) {
         if (d3.event.x < xMin) {
           sliderAPos = [xMin];
-            sliderA.select("circle")
-                  .attr("cx", xMin)
         } else if (xMax < d3.event.x) {
-            sliderA.selectAll("circle")
-                  .attr("cx", xMax)
             sliderAPos = [xMax];
         } else {
-            sliderA.selectAll("circle")
-                  .attr("cx", d.x = d3.event.x)
             sliderAPos = [d3.event.x];
         }
-        rMiles = ((xMin - sliderAPos[0])*sliderMileRange)/(xMin - xMax)
-        rPx = calcPxRadius(rMiles, degreesPerPixel);
+        rMilesA = ((xMin - sliderAPos[0])*sliderMileRange)/(xMin - xMax)
+        rPxA = calcPxRadius(rMilesA, degreesPerPixel);
+        sliderBCircle.attr("cx", sliderBPos)
         currentRadius.attr("x", sliderAPos)
-                     .text(rMiles)
-         outerCircleA.attr("r", rPx)
-         outerCircleB.attr("r", rPx)
+                     .text(rMilesA)
+         outerCircleA.attr("r", rPxA)
+        closePoints = getPoints(csvData)
+        updateRestaurants(closePoints)
+    }
+
+    //Update viz when slider is dragged
+    function update_sliderB(d) {
+        if (d3.event.x < xMin) {
+          sliderBPos = [xMin];
+        } else if (xMax < d3.event.x) {
+            sliderBPos = [xMax];
+        } else {
+            sliderBPos = [d3.event.x];
+        }
+        rMilesB = ((xMin - sliderBPos[0])*sliderMileRange)/(xMin - xMax)
+        rPxB = calcPxRadius(rMilesB, degreesPerPixel);
+        sliderBCircle.attr("cx", sliderBPos)
+        currentRadiusB.attr("x", sliderBPos)
+                     .text(rMilesB)
+         outerCircleB.attr("r", rPxB)
         closePoints = getPoints(csvData)
         updateRestaurants(closePoints)
     }
 
     var ySliderB = 400;
-    var sliderBPos = [-(rMiles*(xMin - xMax)/sliderMileRange - xMin)];
+    var sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)];
     var sliderB =	svg.selectAll("circle")
                       .data(sliderBPos)
                       .enter()
@@ -191,7 +248,7 @@ function drawPOIs () {
                 .style("fill",	"red")
                 .style("fill-opacity", 0.3)
                 .style("stroke", 1)
-                .attr("r",	rPx)
+                .attr("r",	rPxA)
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag", update_A));
@@ -205,7 +262,7 @@ function drawPOIs () {
                 .style("fill",	"yellow")
                 .style("fill-opacity", 0.3)
                 .style("stroke", 1)
-                .attr("r",	rPx)
+                .attr("r",	rPxB)
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag", update_B));
@@ -215,10 +272,6 @@ function drawPOIs () {
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag", update_B));
-  }
-
-function drawSliders() {
-
   }
 
 
@@ -260,7 +313,7 @@ function getPoints(data){
                         +
                         Math.pow((d.proj[1] - posB[0].y),2)
                     ));
-        return (distA < rPx && distB < rPx);
+        return (distA < rPxA && distB < rPxB);
     });
     return closePoints;
 }
