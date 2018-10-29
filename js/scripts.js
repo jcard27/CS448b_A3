@@ -68,6 +68,38 @@ svg.append("text")
    .attr("class", "instructions")
    .text(" - Use sliders to adjust minimum inspection score and radii of interest.")
 
+//Caption regarding scores
+ svg.append("text")
+    .attr("x", instructionX)
+    .attr("y", instructionY)
+    .attr("dy", "9em")
+    .attr("class", "instructions")
+    .text("*The San Francisco Department of Public Health defines scores as follows:")
+svg.append("text")
+   .attr("x", instructionX+ 20)
+   .attr("y", instructionY)
+   .attr("dy", "10em")
+   .attr("class", "instructions")
+   .text("< 70: Poor")
+svg.append("text")
+   .attr("x", instructionX+ 20)
+   .attr("y", instructionY)
+   .attr("dy", "11em")
+   .attr("class", "instructions")
+   .text("71-85: Needs Improvement")
+svg.append("text")
+  .attr("x", instructionX+ 20)
+  .attr("y", instructionY)
+  .attr("dy", "12em")
+  .attr("class", "instructions")
+  .text("86-90: Adequate")
+svg.append("text")
+   .attr("x", instructionX+ 20)
+   .attr("y", instructionY)
+   .attr("dy", "13em")
+   .attr("class", "instructions")
+   .text("> 90: Good")
+
 //Load data
 d3.csv("/data/restaurant_scores.csv", parseInputRow).then(loadData);
 
@@ -125,11 +157,12 @@ function generateVis(csvData){
     var ySliderScore = ySliderB + 70; // y-position of slider adjusting score filter
     var sliderTitleOffset = 20;
     var sliderMileRange = 4; // maximum radius around POI
-    var sliderScoreRange = 100; // maximum score for filter
-    var minimumScore = 0; // minumum score for filter
+    var sliderScoreRange = 29; // range between minimum and maximum score
+    var MINSCORE = 71
+    var minimumScore = MINSCORE; // minumum score for filter
     var sliderAPos = [-(rMilesA*(xMin - xMax)/sliderMileRange - xMin)]; // x-position of slider marker
     var sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)]; // x-position of slider marker
-    var sliderScorePos = [-(minimumScore*(xMin - xMax)/sliderScoreRange - xMin)]; // x-position of slider marker
+    var sliderScorePos = [-((minimumScore-MINSCORE)*(xMin - xMax)/sliderScoreRange - xMin)]; // x-position of slider marker
     var currentRadius = sliderA.append("text"); // text displaying the radius
     var sliderACircle = sliderA.append("circle"); // circle marking slider position
     var currentRadiusB = sliderB.append("text"); // text displaying the radius
@@ -144,6 +177,12 @@ function generateVis(csvData){
     updateGreyRestaurants(filteredPoints, backgroundGroup);
 
   ////////////// Draw sliders for user inputs ///////////////
+  // sliderA.append('rect')
+  //        .attr("x", xMin - 30)
+  //        .attr("y", ySliderA - 70)
+  //        .attr("width", 500)
+  //        .attr("height", 350)
+  //        .style("fill", "white")
     // Slider for radius of POI A
     sliderA.append("line")
           .attr("x1", xMin)
@@ -181,6 +220,8 @@ function generateVis(csvData){
           .attr("cx", sliderAPos)
           .attr("cy", ySliderA)
           .call(d3.drag().on("drag",	update_sliderA));
+
+
 
     // Slider for radius of POI B
     sliderB.append("line")
@@ -233,17 +274,22 @@ function generateVis(csvData){
           .attr("class", "sliderNumber")
           .attr("x",	xMin - 20)
           .attr("y",	ySliderScore + 7)
-          .text("0")
+          .text(MINSCORE)
+    sliderScore.append("line")
+          .attr("x1", xMin)
+          .attr("x2", xMin)
+          .attr("y1",	ySliderScore)
+          .attr("y2",	ySliderScore + 7)
     sliderScore.append("text")
           .attr("class", "sliderNumber")
           .attr("x",	xMax + 20)
           .attr("y",	ySliderScore + 7)
-          .text(sliderScoreRange)
+          .text(sliderScoreRange + MINSCORE)
   sliderScore.append("text")
         .attr("class", "sliderTitle")
         .attr("x",	xMin - 20)
         .attr("y",	ySliderScore - sliderTitleOffset)
-        .text("Minimum Inspection Score")
+        .text("Minimum Inspection Score*")
    currentMinScore
           .attr("class", "sliderNumber")
           .attr("x",	sliderScorePos[0])
@@ -296,7 +342,8 @@ function generateVis(csvData){
                                   xMax,
                                   sliderMileRange,
                                   sliderACircle,
-                                  currentRadius)
+                                  currentRadius,
+                                  0)
          rPxA = calcPxRadius(rMilesA, degreesPerPixel);
          outerCircleA.attr("r", rPxA)
          closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
@@ -312,7 +359,8 @@ function generateVis(csvData){
                                   xMax,
                                   sliderMileRange,
                                   sliderBCircle,
-                                  currentRadiusB)
+                                  currentRadiusB,
+                                  0)
          rPxB = calcPxRadius(rMilesB, degreesPerPixel);
          outerCircleB.attr("r", rPxB)
          closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
@@ -327,7 +375,10 @@ function generateVis(csvData){
                                     xMax,
                                     sliderScoreRange,
                                     sliderScoreCircle,
-                                    currentMinScore)
+                                    currentMinScore,
+                                    MINSCORE)
+        currentMinScore.attr("x", sliderScorePos)
+                       .text(Math.round(minimumScore))
          filteredPoints = filterByScore(csvData, minimumScore)
          updateGreyRestaurants(filteredPoints, backgroundGroup)
          closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
@@ -423,7 +474,7 @@ function generateVis(csvData){
 
 // Move slider marker and label
 //Returns new value corresponding to slider position
-function moveSlider (event, sliderPos, xMin, xMax, range, marker, label) {
+function moveSlider (event, sliderPos, xMin, xMax, range, marker, label, offset) {
     var sliderPos;
     var newValue;
     if (event.x < xMin) {
@@ -433,7 +484,7 @@ function moveSlider (event, sliderPos, xMin, xMax, range, marker, label) {
     } else {
         sliderPos = [event.x];
     }
-    newValue = ((xMin - sliderPos[0])*range)/(xMin - xMax);
+    newValue = ((xMin - sliderPos[0])*range)/(xMin - xMax) + offset;
     console.log(newValue)
     marker.attr("cx", sliderPos)
     label.attr("x", sliderPos)
