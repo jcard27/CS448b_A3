@@ -17,18 +17,14 @@ var projection = d3.geoMercator()
 
 // Add an SVG element to the DOM
 var svg = d3.select('body').append('svg')
-  .attr('width', mapWidth)
-  .attr('height', mapHeight);
+  .attr('width', mapWidth*2)
+  .attr('height', mapHeight*2);
 
 // Add SVG map at correct size, assuming map is saved in a subdirectory called `data`
 svg.append('image')
   .attr('width', mapWidth)
   .attr('height', mapHeight)
   .attr('xlink:href', 'data/sf-map.svg');
-
-// Declare Global Variables
-//Specify initial positions A and B in pixel space
-
 
 //Load data
 d3.csv("/data/short_restaurant_scores.csv", parseInputRow).then(loadData);
@@ -47,7 +43,6 @@ function parseInputRow (d) {
  //Callback for d3.csv (all data related tasks go here)
  function loadData(loadedData){
      csvData = loadedData
-     console.log("data loaded")
      csvData.forEach(function(d) {
                         d.proj = projection([d.business_longitude, d.business_latitude]);
                      }
@@ -55,16 +50,17 @@ function parseInputRow (d) {
      generateVis(csvData);
  };
 
- //Generate visualization using parsed data from CSV (array of objects)
+//Generate visualization using parsed data from CSV (array of objects)
 function generateVis(csvData){
-    //Groups for viz elements
+  ///////////////// Declaring Vars /////////////////////
+    //Groups for viz elements in svg container
     var cursorGroupA =	svg.append("g"); // group for POI A draggable point
     var cursorGroupB =	svg.append("g"); // group for POI B draggable point
     var backgroundGroup = svg.append('g'); //group for greyed out restaurants
     var plotGroup = svg.append('g'); // group for highlighted restaurants
-    var sliderA =	svg.append("g");
-    var sliderB =	svg.append("g");
-    var sliderScore =	svg.append("g");
+    var sliderA =	svg.append("g"); // group for slider to adjust radius around A
+    var sliderB =	svg.append("g"); // group for slider to adjust radius around B
+    var sliderScore =	svg.append("g"); // group for slider to adjust score threshold for filter
 
     //Draggable POI variables
     var posA = [{x: 100, y: 100}]; // Initial position for A px
@@ -74,26 +70,39 @@ function generateVis(csvData){
     var degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];//change in degrees per 1 pixel change in longitude
     var rPxA = calcPxRadius(rMilesA, degreesPerPixel); // radius around A in pixels
     var rPxB = calcPxRadius(rMilesB, degreesPerPixel); // radius around B in pixels
-
+    var outerCircleA = cursorGroupA.append("circle"); // circle showing radius around A
+    var innerCircleA = cursorGroupA.append("circle"); // circle showing POI A
+    var outerCircleB = cursorGroupB.append("circle"); // circle showing radius around B
+    var innerCircleB = cursorGroupB.append("circle"); // circle showing POI B
 
     //Slider Variables
-    var xMin = 500;
-    var xMax = 600;
-    var sliderMileRange = 4;
-    var sliderScoreRange = 100;
-    var minimumScore = 0;
-    var ySliderA = 100;
-    var ySliderB = 200;
-    var sliderAPos = [-(rMilesA*(xMin - xMax)/sliderMileRange - xMin)];
-    var sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)];
-    var sliderScorePos = [-(minimumScore*(xMin - xMax)/sliderScoreRange - xMin)];
-    var currentRadius;
-    var sliderACircle;
+    var xMin = 800; // x-position to start at
+    var xMax = xMin + 150; // x-position to end at
+    var ySliderA = 200; // y-position of slider adjusting radius A
+    var ySliderB = ySliderA + 110; // y-position of slider adjusting B
+    var ySliderScore = ySliderB + 110; // y-position of slider adjusting score filter
+    var sliderTitleOffset = 20;
+    var sliderMileRange = 4; // maximum radius around POI
+    var sliderScoreRange = 100; // maximum score for filter
+    var minimumScore = 0; // minumum score for filter
+    var sliderAPos = [-(rMilesA*(xMin - xMax)/sliderMileRange - xMin)]; // x-position of slider marker
+    var sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)]; // x-position of slider marker
+    var sliderScorePos = [-(minimumScore*(xMin - xMax)/sliderScoreRange - xMin)]; // x-position of slider marker
+    var currentRadius = sliderA.append("text"); // text displaying the radius
+    var sliderACircle = sliderA.append("circle"); // circle marking slider position
+    var currentRadiusB = sliderB.append("text"); // text displaying the radius
+    var sliderBCircle = sliderB.append("circle"); // circle marking slider position
+    var currentMinScore = sliderB.append("text"); // text displaying score to filter by
+    var sliderScoreCircle = sliderScore.append("circle"); // circle marking slider position
 
-
+    // Variable containing data filtered by the score requirement
     var filteredPoints = csvData;
 
-    // Draw sliders for user inputs
+/////////// Draw all restaurants initially greyed out ///////
+    updateGreyRestaurants(filteredPoints, backgroundGroup)
+
+  ////////////// Draw sliders for user inputs ///////////////
+    // Slider for radius of POI A
     sliderA.append("line")
           .attr("x1", xMin)
           .attr("x2", xMax)
@@ -101,24 +110,32 @@ function generateVis(csvData){
           .attr("y2", ySliderA)
           .attr("class", "sliderBar")
     sliderA.append("text")
+          .attr("class", "sliderNumber")
           .attr("x",	xMin - 20)
           .attr("y",	ySliderA + 7)
           .text("0")
     sliderA.append("text")
+          .attr("class", "sliderNumber")
           .attr("x",	xMax + 20)
           .attr("y",	ySliderA + 7)
           .text(sliderMileRange)
-    currentRadius = sliderA.append("text")
+    sliderA.append("text")
+          .attr("class", "sliderTitle")
+          .attr("x",	xMin)
+          .attr("y",	ySliderA - sliderTitleOffset)
+          .text("Radius around Point A")
+    currentRadius
+          .attr("class", "sliderNumber")
           .attr("x",	sliderAPos[0])
           .attr("y",	ySliderA + 25)
           .text(rMilesA)
-    sliderACircle = sliderA.append("circle")
-          .attr("r", 5)
+    sliderACircle
+          .attr("class", "sliderCircle")
           .attr("cx", sliderAPos)
           .attr("cy", ySliderA)
           .call(d3.drag().on("drag",	update_sliderA));
 
-
+    // Slider for radius of POI B
     sliderB.append("line")
           .attr("class", "sliderBar")
           .attr("x1", xMin)
@@ -126,67 +143,32 @@ function generateVis(csvData){
           .attr("y1", ySliderB)
           .attr("y2", ySliderB)
     sliderB.append("text")
+          .attr("class", "sliderNumber")
           .attr("x",	xMin - 20)
           .attr("y",	ySliderB + 7)
           .text("0")
     sliderB.append("text")
+          .attr("class", "sliderNumber")
           .attr("x",	xMax + 20)
           .attr("y",	ySliderB + 7)
           .text(sliderMileRange)
-    var currentRadiusB = sliderB.append("text")
+    sliderB.append("text")
+          .attr("class", "sliderTitle")
+          .attr("x",	xMin)
+          .attr("y",	ySliderB - sliderTitleOffset)
+          .text("Radius around Point B")
+    currentRadiusB
+          .attr("class", "sliderNumber")
           .attr("x",	sliderBPos[0])
           .attr("y",	ySliderB + 25)
-          .style("text-anchor", "middle")
           .text(rMilesB)
-    var sliderBCircle = sliderB.append("circle")
-          .attr("r", 5)
+    sliderBCircle
+          .attr("class", "sliderCircle")
           .attr("cx", sliderBPos)
           .attr("cy", ySliderB)
           .call(d3.drag().on("drag",	update_sliderB));
 
-          updateGreyRestaurants(filteredPoints, backgroundGroup)
-
-    //Update viz when slider is dragged
-    function update_sliderA(d) {
-        if (d3.event.x < xMin) {
-          sliderAPos = [xMin];
-        } else if (xMax < d3.event.x) {
-            sliderAPos = [xMax];
-        } else {
-            sliderAPos = [d3.event.x];
-        }
-        rMilesA = ((xMin - sliderAPos[0])*sliderMileRange)/(xMin - xMax)
-        rPxA = calcPxRadius(rMilesA, degreesPerPixel);
-        sliderACircle.attr("cx", sliderAPos)
-        currentRadius.attr("x", sliderAPos)
-                     .text(rMilesA)
-         outerCircleA.attr("r", rPxA)
-        closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
-        updateRestaurants(closePoints, plotGroup)
-        return rPxA
-    }
-
-    //Update viz when slider is dragged
-    function update_sliderB(d) {
-        if (d3.event.x < xMin) {
-          sliderBPos = [xMin];
-        } else if (xMax < d3.event.x) {
-            sliderBPos = [xMax];
-        } else {
-            sliderBPos = [d3.event.x];
-        }
-        rMilesB = ((xMin - sliderBPos[0])*sliderMileRange)/(xMin - xMax)
-        rPxB = calcPxRadius(rMilesB, degreesPerPixel);
-        sliderBCircle.attr("cx", sliderBPos)
-        currentRadiusB.attr("x", sliderBPos)
-                     .text(rMilesB)
-        outerCircleB.attr("r", rPxB)
-        closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
-        updateRestaurants(closePoints, plotGroup)
-        console.log(rPxB)
-    }
-
-    var ySliderScore = 300;
+    // Slider for filtering visible restaurants by inspection score
     sliderScore.append("line")
           .attr("class", "sliderBar")
           .attr("x1", xMin)
@@ -194,55 +176,36 @@ function generateVis(csvData){
           .attr("y1", ySliderScore)
           .attr("y2", ySliderScore)
     sliderScore.append("text")
+          .attr("class", "sliderNumber")
           .attr("x",	xMin - 20)
           .attr("y",	ySliderScore + 7)
           .text("0")
     sliderScore.append("text")
+          .attr("class", "sliderNumber")
           .attr("x",	xMax + 20)
           .attr("y",	ySliderScore + 7)
           .text(sliderScoreRange)
-    var currentMinScore = sliderB.append("text")
+  sliderScore.append("text")
+        .attr("class", "sliderTitle")
+        .attr("x",	xMin)
+        .attr("y",	ySliderScore - sliderTitleOffset)
+        .text("Minimum Inspection Score")
+   currentMinScore
+          .attr("class", "sliderNumber")     
           .attr("x",	sliderScorePos[0])
           .attr("y",	ySliderScore + 25)
           .text(minimumScore)
-    var sliderScoreCircle = sliderScore.append("circle")
-          .attr("r", 5)
+    sliderScoreCircle
+          .attr("class", "sliderCircle")
           .attr("cx", sliderScorePos)
           .attr("cy", ySliderScore)
           .call(d3.drag().on("drag",	update_sliderScore));
 
-    //Update viz when slider is dragged
-    function update_sliderScore(d) {
-        if (d3.event.x < xMin) {
-          sliderScorePos = [xMin];
-        } else if (xMax < d3.event.x) {
-            sliderScorePos = [xMax];
-        } else {
-            sliderScorePos = [d3.event.x];
-        }
-        minimumScore = ((xMin - sliderScorePos[0])*sliderScoreRange)/(xMin - xMax)
-        sliderScoreCircle.attr("cx", sliderScorePos)
-        currentMinScore.attr("x", sliderScorePos)
-                     .text(minimumScore)
-        filteredPoints = filterByScore(csvData, minimumScore)
-        updateGreyRestaurants(filteredPoints, backgroundGroup)
-        closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
-        updateRestaurants(closePoints, plotGroup)
-    }
-
-    //Draw all restaurants greyed out
-    // var greyRestaurants = backgroundGroup.selectAll("circle")
-    //                                      .data(filteredPoints)
-    //                                      .enter().append("circle")
-    //                                      .attr("class", "mutedRestaurants")
-    //                                      .attr("cx", function (d) {return d.proj[0];})
-    //                                      .attr("cy", function (d) {return d.proj[1];})
-
-     //Draw points of interest A and B, and their surrounding circles
-     console.log(rPxA)
+   ////////////// Draw POIs A and B and surrounding radii ///////////////
+     // POI A
      outerCircleA = cursorGroupA.append("circle")
                  .attr("class", "outerRadius")
-                 .style("fill",	"red")
+                 .style("fill",	"#009900")
                  .style("stroke", 1)
                  .attr("r",	rPxA)
                  .attr("cx",	posA[0].x)
@@ -250,33 +213,84 @@ function generateVis(csvData){
                  .call(d3.drag().on("drag", update_A));
      innerCircleA = cursorGroupA.append("circle")
                  .attr("class", "POI")
+                 .attr("fill", "#009900")
                  .attr("cx",	posA[0].x)
                  .attr("cy",	posA[0].y)
                  .call(d3.drag().on("drag",	update_A));
-     //Update viz when A is dragged
-     function update_A(d) {
-         posA = [{x: d3.event.x, y: d3.event.y}];
-         cursorGroupA.selectAll("circle")
-            .attr("cx", d3.event.x)
-            .attr("cy", d3.event.y);
-         closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
-         updateRestaurants(closePoints, plotGroup)
-     }
 
-     outerCircleB = cursorGroupB.append("circle")
+     // POI B
+     outerCircleB
                  .attr("class", "outerRadius")
-                 .style("fill",	"yellow")
+                 .style("fill",	"blue")
                  .attr("r",	rPxB)
                  .attr("cx",	posB[0].x)
                  .attr("cy",	posB[0].y)
                  .call(d3.drag().on("drag", update_B));
      innerCircleB = cursorGroupB.append("circle")
                  .attr("class", "POI")
+                 .attr("fill", "blue")
                  .attr("cx",	posB[0].x)
                  .attr("cy",	posB[0].y)
                  .call(d3.drag().on("drag", update_B));
 
-     //Update viz when B is dragged
+     //////////// Event Callbacks for Updates ////////////////
+     //Update viz when slider is dragged
+     function update_sliderA(d) {
+       rMilesA = moveSlider (d3.event,
+                                  sliderAPos,
+                                  xMin,
+                                  xMax,
+                                  sliderMileRange,
+                                  sliderACircle,
+                                  currentRadius)
+         rPxA = calcPxRadius(rMilesA, degreesPerPixel);
+         outerCircleA.attr("r", rPxA)
+         closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
+         updateRestaurants(closePoints, plotGroup)
+         return rPxA
+     }
+
+     //Update viz when slider is dragged
+     function update_sliderB(d) {
+       rMilesB = moveSlider (d3.event,
+                                  sliderBPos,
+                                  xMin,
+                                  xMax,
+                                  sliderMileRange,
+                                  sliderBCircle,
+                                  currentRadiusB)
+         rPxB = calcPxRadius(rMilesB, degreesPerPixel);
+         outerCircleB.attr("r", rPxB)
+         closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
+         updateRestaurants(closePoints, plotGroup)
+     }
+
+     //Update viz when slider is dragged
+     function update_sliderScore(d) {
+         minimumScore = moveSlider (d3.event,
+                                    sliderScorePos,
+                                    xMin,
+                                    xMax,
+                                    sliderScoreRange,
+                                    sliderScoreCircle,
+                                    currentMinScore)
+         filteredPoints = filterByScore(csvData, minimumScore)
+         updateGreyRestaurants(filteredPoints, backgroundGroup)
+         closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
+         updateRestaurants(closePoints, plotGroup)
+     }
+
+     //Update viz when POI A is dragged
+     function update_A(d) {
+         cursorGroupA.selectAll("circle")
+            .attr("cx", d3.event.x)
+            .attr("cy", d3.event.y);
+         posA = [{x: d3.event.x, y: d3.event.y}];
+         closePoints = getPoints(filteredPoints, rPxA, rPxB, posA, posB)
+         updateRestaurants(closePoints, plotGroup)
+     }
+
+     //Update viz when POI B is dragged
      function update_B(d) {
        cursorGroupB.selectAll("circle")
           .attr("cx", d3.event.x)
@@ -292,6 +306,27 @@ function generateVis(csvData){
 //Utility Functions
 /////////////////////////////////////////////////////////////////////////
 
+// Move slider marker and label
+//Returns new value corresponding to slider position
+function moveSlider (event, sliderPos, xMin, xMax, range, marker, label) {
+  var sliderPos;
+  var newValue;
+  if (event.x < xMin) {
+    sliderPos = [xMin];
+  } else if (xMax < event.x) {
+      sliderPos = [xMax];
+  } else {
+      sliderPos = [event.x];
+  }
+  newValue = ((xMin - sliderPos[0])*range)/(xMin - xMax);
+  console.log(newValue)
+  marker.attr("cx", sliderPos)
+  label.attr("x", sliderPos)
+               .text(newValue)
+ return newValue
+}
+
+// Filter data to only return data with a score above minimumScore
 function filterByScore(data, minimumScore) {
     var filteredPoints = data.filter(function (d) {
         return d.inspection_score > minimumScore
@@ -299,7 +334,7 @@ function filterByScore(data, minimumScore) {
     return filteredPoints
 }
 
-//Filter CSV data for points within a given distance
+//Filter CSV data for points lying within a given radius of 2 points
 function getPoints(data, rPxA, rPxB, posA, posB){
     var closePoints = data.filter(function (d) {
         var distA = Math.abs(Math.sqrt(
@@ -360,7 +395,7 @@ function calcDist(loc1, loc2){
 function calcPxRadius(rMiles, degreesPerPixel){
     var earth_radius = 3959;  // miles
     var radians = rMiles/earth_radius;
-    var degrees = (radians * 180)/3.14
+    var degrees = (radians * 180)/3.14159;
     var rPixels = Math.abs(degrees/degreesPerPixel);
     return rPixels;
 }
