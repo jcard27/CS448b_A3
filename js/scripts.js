@@ -101,7 +101,7 @@ svg.append("text")
    .text("> 90: Good")
 
 //Load data
-d3.csv("restaurant_scores.csv", parseInputRow).then(loadData);
+d3.csv("/data/restaurant_scores.csv", parseInputRow).then(loadData);
 
 //Parse CSV rows and returns array of objects with the specified fields.
 function parseInputRow (d) {
