@@ -40,6 +40,8 @@ var xMax = 600;
 var sliderA = [];
 var sliderAPos = [];
 var sliderMileRange = [];
+var filteredPoints = [];
+
 
 //Add group for cursors
 var cursorGroupA =	svg.selectAll("circle")
@@ -84,6 +86,7 @@ function parseInputRow (d) {
 
  //Generate visualization using parsed data from CSV (array of objects)
 function generateVis(csvData){
+    filteredPoints = csvData;
 
     //Calculate change in degrees per 1 pixel change in longitude
     degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
@@ -100,16 +103,24 @@ function generateVis(csvData){
     var xMin = 500;
     var xMax = 600;
     var sliderMileRange = 4;
+    var sliderScoreRange = 100;
+    var minimumScore = 0;
 
     var ySliderA = 100;
     sliderAPos = [-(rMilesA*(xMin - xMax)/sliderMileRange - xMin)];
+    sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)];
+    sliderScorePos = [-(minimumScore*(xMin - xMax)/sliderScoreRange - xMin)];
     sliderA =	svg.selectAll("circle")
                       .data(sliderAPos)
                       .enter()
                       .append("g");
 
     sliderB =	svg.selectAll("circle")
-                      .data(sliderAPos)
+                      .data(sliderBPos)
+                      .enter()
+                      .append("g");
+    sliderScore =	svg.selectAll("circle")
+                      .data(sliderScorePos)
                       .enter()
                       .append("g");
 
@@ -148,8 +159,7 @@ function generateVis(csvData){
           .attr("cy", ySliderA)
           .call(d3.drag().on("drag",	update_sliderA));
 
-    var ySliderB = 500;
-    sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)];
+    var ySliderB = 200;
     sliderB.append("line")
           .attr("x1", xMin)
           .attr("x2", xMax)
@@ -200,7 +210,7 @@ function generateVis(csvData){
         currentRadius.attr("x", sliderAPos)
                      .text(rMilesA)
          outerCircleA.attr("r", rPxA)
-        closePoints = getPoints(csvData)
+        closePoints = getPoints(filteredPoints)
         updateRestaurants(closePoints)
     }
 
@@ -219,19 +229,68 @@ function generateVis(csvData){
         currentRadiusB.attr("x", sliderBPos)
                      .text(rMilesB)
          outerCircleB.attr("r", rPxB)
-        closePoints = getPoints(csvData)
+        closePoints = getPoints(filteredPoints)
         updateRestaurants(closePoints)
     }
 
-    var ySliderB = 400;
-    var sliderBPos = [-(rMilesB*(xMin - xMax)/sliderMileRange - xMin)];
-    var sliderB =	svg.selectAll("circle")
-                      .data(sliderBPos)
-                      .enter()
-                      .append("g");
+    var ySliderScore = 300;
+    sliderScore.append("line")
+          .attr("x1", xMin)
+          .attr("x2", xMax)
+          .attr("y1", ySliderScore)
+          .attr("y2", ySliderScore)
+          .attr("stroke", "black")
+          .attr("stroke-width", 1)
+    sliderScore.append("text")
+          .attr("x",	xMin - 20)
+          .attr("y",	ySliderScore + 7)
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "20px")
+          .attr("fill", "black")
+          .text("0")
+    sliderScore.append("text")
+          .attr("x",	xMax + 20)
+          .attr("y",	ySliderScore + 7)
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "20px")
+          .attr("fill", "black")
+          .text(sliderScoreRange)
+    var currentMinScore = sliderB.append("text")
+          .attr("x",	sliderScorePos[0])
+          .attr("y",	ySliderScore + 25)
+          .attr("font-family", "sans-serif")
+          .attr("font-size", "20px")
+          .attr("fill", "black")
+          .style("text-anchor", "middle")
+          .text(minimumScore)
+    var sliderScoreCircle = sliderScore.append("circle")
+          .attr("r", 5)
+          .attr("cx", function (d) {return d})
+          .attr("cy", ySliderScore)
+          .call(d3.drag().on("drag",	update_sliderScore));
+
+    //Update viz when slider is dragged
+    function update_sliderScore(d) {
+        if (d3.event.x < xMin) {
+          sliderScorePos = [xMin];
+        } else if (xMax < d3.event.x) {
+            sliderScorePos = [xMax];
+        } else {
+            sliderScorePos = [d3.event.x];
+        }
+        minimumScore = ((xMin - sliderScorePos[0])*sliderScoreRange)/(xMin - xMax)
+        sliderScoreCircle.attr("cx", sliderScorePos)
+        currentMinScore.attr("x", sliderScorePos)
+                     .text(minimumScore)
+        filteredPoints = filterByScore(csvData, minimumScore)
+        updateGreyRestaurants(filteredPoints)
+        closePoints = getPoints(filteredPoints)
+        updateRestaurants(closePoints)
+    }
+
     //Draw all restaurants greyed out
     var greyRestaurants = backgroundGroup.selectAll("circle")
-                                         .data(csvData)
+                                         .data(filteredPoints)
                                          .enter().append("circle")
                                          .attr("r", 5)
                                          .attr("cx", function (d) {return d.proj[0];})
@@ -284,7 +343,7 @@ function update_A(d) {
     cursorGroupA.selectAll("text")
           .attr("x", d.x =	d3.event.x)
           .attr("y", d.y =	d3.event.y);
-    closePoints = getPoints(csvData)
+    closePoints = getPoints(filteredPoints)
     updateRestaurants(closePoints)
 }
 
@@ -294,10 +353,16 @@ function update_B(d) {
   var cursors = cursorGroupB.selectAll("circle")
      .attr("cx", d.x =	d3.event.x)
      .attr("cy", d.y =	d3.event.y);
-  closePoints = getPoints(csvData)
+  closePoints = getPoints(filteredPoints)
   updateRestaurants(closePoints)
 }
 
+function filterByScore(data, minimumScore) {
+    var filteredPoints = data.filter(function (d) {
+        return d.inspection_score > minimumScore
+    });
+    return filteredPoints
+}
 
 
 //Filter CSV data for points within a given distance
@@ -324,12 +389,24 @@ function updateRestaurants(closePoints) {
                    .data(closePoints)
    circles.enter().append("circle")
       .merge(circles)
-      .attr("class", "enter")
+      .style("fill", "red")//.attr("class", "enter")
       .attr("r", 5)
       .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
       .attr("cy", function (d) {return d.proj[1];})
-   circles.exit()
-        .attr("class", "exit").remove();
+   circles.exit().remove();
+}
+
+//Add red circles for all restaurants based on long and lat
+function updateGreyRestaurants(filteredPoints) {
+  var circles = backgroundGroup.selectAll("circle")
+                  .data(filteredPoints)
+   circles.enter().append("circle")
+      .merge(circles)
+      .style("fill", "green")
+      .attr("r", 5)
+      .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
+      .attr("cy", function (d) {return d.proj[1];})
+   circles.exit().remove();
 }
 
 //Calculate distance in miles between 2 points
