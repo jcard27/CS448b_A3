@@ -121,9 +121,9 @@ function generateVis(csvData){
           .text(sliderMileRange)
     sliderA.append("text")
           .attr("class", "sliderTitle")
-          .attr("x",	xMin)
+          .attr("x",	xMin - 20)
           .attr("y",	ySliderA - sliderTitleOffset)
-          .text("Radius around Point A")
+          .text("Radius around Point A:")
     currentRadius
           .attr("class", "sliderNumber")
           .attr("x",	sliderAPos[0])
@@ -154,9 +154,9 @@ function generateVis(csvData){
           .text(sliderMileRange)
     sliderB.append("text")
           .attr("class", "sliderTitle")
-          .attr("x",	xMin)
+          .attr("x",	xMin - 20)
           .attr("y",	ySliderB - sliderTitleOffset)
-          .text("Radius around Point B")
+          .text("Radius around Point B:")
     currentRadiusB
           .attr("class", "sliderNumber")
           .attr("x",	sliderBPos[0])
@@ -187,11 +187,11 @@ function generateVis(csvData){
           .text(sliderScoreRange)
   sliderScore.append("text")
         .attr("class", "sliderTitle")
-        .attr("x",	xMin)
+        .attr("x",	xMin - 20)
         .attr("y",	ySliderScore - sliderTitleOffset)
-        .text("Minimum Inspection Score")
+        .text("Minimum Inspection Score:")
    currentMinScore
-          .attr("class", "sliderNumber")     
+          .attr("class", "sliderNumber")
           .attr("x",	sliderScorePos[0])
           .attr("y",	ySliderScore + 25)
           .text(minimumScore)
@@ -300,6 +300,65 @@ function generateVis(csvData){
          updateRestaurants(closePoints, plotGroup)
      }
 
+     //Add red circles for all restaurants based on long and lat
+     function updateRestaurants(closePoints, plotGroup) {
+        var circles = plotGroup.selectAll("circle")
+                        .data(closePoints)
+        circles.enter().append("circle")
+           .merge(circles)
+           .attr("class", "highlightedRestaurants")
+           .attr("cx", function (d) {return d.proj[0];})
+           .attr("cy", function (d) {return d.proj[1];})
+        circles.exit().remove();
+
+        plotGroup.selectAll("circle")
+                 .on("mouseover",	displayName)
+                 .on("mouseout", undisplay);
+     }
+
+     //Add green circles for restaurants that meet the score requirement
+     function updateGreyRestaurants(filteredPoints, backgroundGroup) {
+       var circles = backgroundGroup.selectAll("circle")
+                       .data(filteredPoints)
+        circles.enter().append("circle")
+           .merge(circles)
+           .attr("class", "mutedRestaurants")
+           .attr("cx", function (d) {return d.proj[0];})
+           .attr("cy", function (d) {return d.proj[1];})
+        circles.exit().remove();
+
+        backgroundGroup.selectAll("circle")
+                       .on("mouseover",	displayName)
+                       .on("mouseout", undisplay);
+     }
+
+     function displayName (d) {
+       var xPos = this.cx.animVal.value;
+       var yPos = this.cy.animVal.value;
+       var name = d3.select(this).datum().business_name;
+       var score = d3.select(this).datum().inspection_score;
+       var highlightedPoint = d3.select(this)
+         .attr("r", 4)
+         .style("stroke", "black")
+         .style("stroke-width", "1")
+
+         backgroundGroup
+         .append("text")
+         .attr("x", xPos - 4)//return d.x})
+         .attr("y", yPos - 6)
+         .attr("class", "sliderNumber")
+         .text(name + "\r\n inspection score: " + score)
+     }
+
+     function undisplay (d) {
+       d3.select(this)
+         .attr("r", 3)
+         .style("stroke-width", "0")
+
+       backgroundGroup.selectAll("text").remove();
+       plotGroup.selectAll("text").remove();
+     }
+
  };
 
 //////////////////////////////////////////////////////////////////////////
@@ -352,29 +411,9 @@ function getPoints(data, rPxA, rPxB, posA, posB){
     return closePoints;
 }
 
-//Add red circles for all restaurants based on long and lat
-function updateRestaurants(closePoints, plotGroup) {
-   var circles = plotGroup.selectAll("circle")
-                   .data(closePoints)
-   circles.enter().append("circle")
-      .merge(circles)
-      .attr("class", "highlightedRestaurants")
-      .attr("cx", function (d) {return d.proj[0];})
-      .attr("cy", function (d) {return d.proj[1];})
-   circles.exit().remove();
-}
 
-//Add green circles for restaurants that meet the score requirement
-function updateGreyRestaurants(filteredPoints, backgroundGroup) {
-  var circles = backgroundGroup.selectAll("circle")
-                  .data(filteredPoints)
-   circles.enter().append("circle")
-      .merge(circles)
-      .attr("class", "mutedRestaurants")
-      .attr("cx", function (d) {return d.proj[0];})
-      .attr("cy", function (d) {return d.proj[1];})
-   circles.exit().remove();
-}
+
+
 
 //Calculate distance in miles between 2 points
 function calcDist(loc1, loc2){
