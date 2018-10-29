@@ -30,8 +30,6 @@ svg.append('image')
 
 // Define Global Variables
 var csvData = [];
-var rPxA = [];
-var rPxB = [];
 var degreesPerPixel = [];
 var posA = [{x: 100, y: 100}]; // Initial position for A
 var posB = [{x: 100, y: 500}]; // Initial position for B
@@ -96,8 +94,8 @@ function generateVis(csvData){
     var rMilesB = 1;
 
     //Convert specified radius from miles to pixles
-    rPxA = calcPxRadius(rMilesA, degreesPerPixel);
-    rPxB = calcPxRadius(rMilesB, degreesPerPixel);
+    var rPxA = calcPxRadius(rMilesA, degreesPerPixel);
+    var rPxB = calcPxRadius(rMilesB, degreesPerPixel);
 
     //Draw Sliders for radii
     var xMin = 500;
@@ -191,7 +189,7 @@ function generateVis(csvData){
         currentRadius.attr("x", sliderAPos)
                      .text(rMilesA)
          outerCircleA.attr("r", rPxA)
-        closePoints = getPoints(filteredPoints)
+        closePoints = getPoints(filteredPoints, rPxA, rPxB)
         updateRestaurants(closePoints)
     }
 
@@ -210,7 +208,7 @@ function generateVis(csvData){
         currentRadiusB.attr("x", sliderBPos)
                      .text(rMilesB)
          outerCircleB.attr("r", rPxB)
-        closePoints = getPoints(filteredPoints)
+        closePoints = getPoints(filteredPoints, rPxA, rPxB)
         updateRestaurants(closePoints)
     }
 
@@ -258,7 +256,7 @@ function generateVis(csvData){
                      .text(minimumScore)
         filteredPoints = filterByScore(csvData, minimumScore)
         updateGreyRestaurants(filteredPoints)
-        closePoints = getPoints(filteredPoints)
+        closePoints = getPoints(filteredPoints, rPxA, rPxB)
         updateRestaurants(closePoints)
     }
 
@@ -270,13 +268,13 @@ function generateVis(csvData){
                                          .attr("cx", function (d) {return d.proj[0];})
                                          .attr("cy", function (d) {return d.proj[1];})
                                          .style("fill", "green");
-    drawPOIs()
+    drawPOIs(rPxA, rPxB)
 
  };
 //////////////////////////////////////////////////////////////////
 
 //Draw points of interest A and B, and their surrounding circles
-function drawPOIs () {
+function drawPOIs (rPxA, rPxB) {
     outerCircleA = cursorGroupA.append("circle")
                 .style("fill",	"red")
                 .style("fill-opacity", 0.3)
@@ -291,6 +289,19 @@ function drawPOIs () {
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag",	update_A));
+    //Update viz when A is dragged
+    function update_A(d) {
+        posA = [{x: d3.event.x, y: d3.event.y}];
+        cursorGroupA.selectAll("circle")
+           .attr("cx", d.x =	d3.event.x)
+           .attr("cy", d.y =	d3.event.y);
+        cursorGroupA.selectAll("text")
+              .attr("x", d.x =	d3.event.x)
+              .attr("y", d.y =	d3.event.y);
+        closePoints = getPoints(filteredPoints, rPxA, rPxB)
+        updateRestaurants(closePoints)
+    }
+
     outerCircleB = cursorGroupB.append("circle")
                 .style("fill",	"yellow")
                 .style("fill-opacity", 0.3)
@@ -305,31 +316,16 @@ function drawPOIs () {
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag", update_B));
+    //Update viz when B is dragged
+    function update_B(d) {
+        posB = [{x: d3.event.x, y: d3.event.y}];
+        var cursors = cursorGroupB.selectAll("circle")
+           .attr("cx", d.x =	d3.event.x)
+           .attr("cy", d.y =	d3.event.y);
+        closePoints = getPoints(filteredPoints, rPxA, rPxB)
+        updateRestaurants(closePoints)
+    }
   }
-
-
-//Update viz when A is dragged
-function update_A(d) {
-    posA = [{x: d3.event.x, y: d3.event.y}];
-    cursorGroupA.selectAll("circle")
-       .attr("cx", d.x =	d3.event.x)
-       .attr("cy", d.y =	d3.event.y);
-    cursorGroupA.selectAll("text")
-          .attr("x", d.x =	d3.event.x)
-          .attr("y", d.y =	d3.event.y);
-    closePoints = getPoints(filteredPoints)
-    updateRestaurants(closePoints)
-}
-
-//Update viz when B is dragged
-function update_B(d) {
-  posB = [{x: d3.event.x, y: d3.event.y}];
-  var cursors = cursorGroupB.selectAll("circle")
-     .attr("cx", d.x =	d3.event.x)
-     .attr("cy", d.y =	d3.event.y);
-  closePoints = getPoints(filteredPoints)
-  updateRestaurants(closePoints)
-}
 
 function filterByScore(data, minimumScore) {
     var filteredPoints = data.filter(function (d) {
@@ -340,7 +336,7 @@ function filterByScore(data, minimumScore) {
 
 
 //Filter CSV data for points within a given distance
-function getPoints(data){
+function getPoints(data, rPxA, rPxB){
     var closePoints = data.filter(function (d) {
         var distA = Math.abs(Math.sqrt(
                         Math.pow((d.proj[0] - posA[0].x), 2)
