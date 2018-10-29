@@ -123,8 +123,7 @@ function generateVis(csvData){
           .attr("x2", xMax)
           .attr("y1", ySliderA)
           .attr("y2", ySliderA)
-          .attr("stroke", "black")
-          .attr("stroke-width", 1)
+          .attr("class", "sliderBar")
     sliderA.append("text")
           .attr("x",	xMin - 20)
           .attr("y",	ySliderA + 7)
@@ -145,12 +144,11 @@ function generateVis(csvData){
 
     var ySliderB = 200;
     sliderB.append("line")
+          .attr("class", "sliderBar")
           .attr("x1", xMin)
           .attr("x2", xMax)
           .attr("y1", ySliderB)
           .attr("y2", ySliderB)
-          .attr("stroke", "black")
-          .attr("stroke-width", 1)
     sliderB.append("text")
           .attr("x",	xMin - 20)
           .attr("y",	ySliderB + 7)
@@ -210,12 +208,11 @@ function generateVis(csvData){
 
     var ySliderScore = 300;
     sliderScore.append("line")
+          .attr("class", "sliderBar")
           .attr("x1", xMin)
           .attr("x2", xMax)
           .attr("y1", ySliderScore)
           .attr("y2", ySliderScore)
-          .attr("stroke", "black")
-          .attr("stroke-width", 1)
     sliderScore.append("text")
           .attr("x",	xMin - 20)
           .attr("y",	ySliderScore + 7)
@@ -223,9 +220,6 @@ function generateVis(csvData){
     sliderScore.append("text")
           .attr("x",	xMax + 20)
           .attr("y",	ySliderScore + 7)
-          .attr("font-family", "sans-serif")
-          .attr("font-size", "20px")
-          .attr("fill", "black")
           .text(sliderScoreRange)
     var currentMinScore = sliderB.append("text")
           .attr("x",	sliderScorePos[0])
@@ -260,10 +254,10 @@ function generateVis(csvData){
     var greyRestaurants = backgroundGroup.selectAll("circle")
                                          .data(filteredPoints)
                                          .enter().append("circle")
-                                         .attr("r", 5)
+                                         .attr("class", "mutedRestaurants")
                                          .attr("cx", function (d) {return d.proj[0];})
                                          .attr("cy", function (d) {return d.proj[1];})
-                                         .style("fill", "green");
+
     drawPOIs(rPxA, rPxB)
 
  };
@@ -272,16 +266,15 @@ function generateVis(csvData){
 //Draw points of interest A and B, and their surrounding circles
 function drawPOIs (rPxA, rPxB) {
     outerCircleA = cursorGroupA.append("circle")
+                .attr("class", "outerRadius")
                 .style("fill",	"red")
-                .style("fill-opacity", 0.3)
                 .style("stroke", 1)
                 .attr("r",	rPxA)
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag", update_A));
     innerCircleA = cursorGroupA.append("circle")
-                .style("fill",	"blue")
-                .attr("r",	5)
+                .attr("class", "POI")
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag",	update_A));
@@ -299,16 +292,14 @@ function drawPOIs (rPxA, rPxB) {
     }
 
     outerCircleB = cursorGroupB.append("circle")
+                .attr("class", "outerRadius")
                 .style("fill",	"yellow")
-                .style("fill-opacity", 0.3)
-                .style("stroke", 1)
                 .attr("r",	rPxB)
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag", update_B));
     innerCircleB = cursorGroupB.append("circle")
-                .style("fill",	"blue")
-                .attr("r",	5)
+                .attr("class", "POI")
                 .attr("cx",	function(d)	{	return d.x;	})
                 .attr("cy",	function(d)	{	return d.y;	})
                 .call(d3.drag().on("drag", update_B));
@@ -355,8 +346,7 @@ function updateRestaurants(closePoints) {
                    .data(closePoints)
    circles.enter().append("circle")
       .merge(circles)
-      .style("fill", "red")
-      .attr("r", 5)
+      .attr("class", "highlightedRestaurants")
       .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
       .attr("cy", function (d) {return d.proj[1];})
    circles.exit().remove();
@@ -368,8 +358,7 @@ function updateGreyRestaurants(filteredPoints) {
                   .data(filteredPoints)
    circles.enter().append("circle")
       .merge(circles)
-      .style("fill", "green")
-      .attr("r", 5)
+      .attr("class", "mutedRestaurants")
       .attr("cx", function (d) {return d.proj[0];}) //projection([d.business_longitude, d.business_latitude])[0];})
       .attr("cy", function (d) {return d.proj[1];})
    circles.exit().remove();
