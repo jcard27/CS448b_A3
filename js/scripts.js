@@ -29,12 +29,8 @@ svg.append('image')
   .attr('xlink:href', 'data/sf-map.svg');
 
 // Define Global Variables
-var csvData = [];
-var degreesPerPixel = [];
 var posA = [{x: 100, y: 100}]; // Initial position for A
 var posB = [{x: 100, y: 500}]; // Initial position for B
-var xMin = 500;
-var xMax = 600;
 var sliderA = [];
 var sliderAPos = [];
 var sliderMileRange = [];
@@ -87,7 +83,7 @@ function generateVis(csvData){
     filteredPoints = csvData;
 
     //Calculate change in degrees per 1 pixel change in longitude
-    degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
+    var degreesPerPixel = projection.invert([1,1])[0] - projection.invert([2,1])[0];
 
     //Specify initial radius in miles
     var rMilesA = 1;
